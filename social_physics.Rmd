@@ -1,0 +1,133 @@
+### REAL NETWORK
+
+```{r}
+library(igraph)
+library(tidyverse)
+
+total1 = data.frame(
+  steamid = as.character(groups_friends_u$steamid),
+  user_id = as.character(groups_friends_u$user_id),
+  stringsAsFactors = FALSE
+)
+
+us = as.data.frame(unique(total1$steamid))
+us_sample = sample_n(us, 20000)
+
+total1 = total1 %>% filter(total1$steamid %in% us_sample$`unique(total1$steamid)`)
+
+proj = graph_from_data_frame(total1, directed = F)
+
+dev.off()
+
+V(proj)$size <- 3 
+V(proj)$frame.color <- "white" 
+V(proj)$color <- "orange" 
+V(proj)$label <- "" 
+E(proj)$arrow.mode <- 0 
+plot(proj)
+plot(proj, vertex.label=NA)
+```
+
+
+
+## Modularity
+```{r}
+fg <- walktrap.community(proj)
+# m = membership(fg) ## assigning nodes to communities
+print(fg)
+modularity(fg)
+
+
+```
+Large modularity
+
+
+```{r}
+degree = as.data.frame(degree(proj))
+hist(degree$`degree(proj)`)
+
+```
+Distribution is powerlaw 
+
+Connectedness
+```{r}
+average.path.length(proj)
+
+```
+Less than random -- cool
+
+
+
+Random graph specifications
+```{r}
+mean_degree = mean(degree$`degree(proj)`)
+mean_degree
+
+vcount(proj)
+```
+
+
+
+## Degree distribution
+```{r}
+library(vcd) ## loading vcd package
+
+gf = goodfit(degree$`degree(proj)`,type= "poisson",method= "ML")
+plot(gf,main="Count data vs Poisson distribution")
+summary(gf)
+
+# to automatically get the pvalue
+gf.summary = capture.output(summary(gf))[[5]]
+pvalue = unlist(strsplit(gf.summary, split = " "))
+pvalue = as.numeric(pvalue[length(pvalue)]); pvalue
+
+```
+Not a poisson distribution
+
+
+### RANDOM NETWORK
+```{r}
+g_random <- sample_smallworld(1, 37207, mean_degree, 0.3)
+V(g_random)$size <- 3 
+V(g_random)$frame.color <- "white" 
+V(g_random)$color <- "orange" 
+V(g_random)$label <- "" 
+E(g_random)$arrow.mode <- 0 
+plot(g_random)
+plot(g_random, vertex.label=NA)
+
+g_random1 <- toVisNetworkData(g_random)
+
+g_random1$nodes$size = V(g_random)$size/3
+g_random1$nodes$title = NA
+g_random1$nodes$label = NA
+visNetwork(nodes = g_random1$nodes, edges = g_random1$edges, height = "800px", width = "1600px") %>% 
+  visIgraphLayout()                      
+```
+
+
+```{r}
+degree_rand = as.data.frame(degree(g_random))
+hist(degree_rand$`degree(g_random)`)
+```
+
+```{r}
+gf = goodfit(degree_rand$`degree(g_random)`,type= "poisson",method= "ML")
+plot(gf,main="Count data vs Poisson distribution")
+summary(gf)
+```
+Poisson distribution
+
+```{r}
+fg <- walktrap.community(g_random)
+# m = membership(fg) ## assigning nodes to communities
+modularity(fg)
+```
+Less than that of real network
+
+
+
+```{r}
+average.path.length(g_random)
+```
+More than that of the real graph
